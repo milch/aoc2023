@@ -14,6 +14,7 @@ fn main() {
     match args.day {
         1 => day_01::print_solution(),
         2 => day_02::print_solution(),
+        3 => day_03::print_solution(),
         _ => unimplemented!(),
     }
 }
