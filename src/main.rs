@@ -17,6 +17,7 @@ fn main() {
         3 => day_03::print_solution(),
         4 => day_04::print_solution(),
         5 => day_05::print_solution(),
+        6 => day_06::print_solution(),
         _ => unimplemented!(),
     }
 }
