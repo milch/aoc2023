@@ -12,5 +12,5 @@ struct Cli {
 
 fn main() {
     let args = Cli::parse();
-    aoc!(args.day => print_solution(), 1..12)
+    aoc!(args.day => print_solution(), 1..13)
 }
