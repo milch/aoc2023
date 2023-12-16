@@ -1,15 +1,20 @@
 use proc_macro::{self, TokenStream};
 use quote::quote;
-use syn::{bracketed, parse_macro_input, punctuated::Punctuated, token::Bracket, Expr, Lit, Token};
+use syn::{
+    braced, bracketed, parse_macro_input, punctuated::Punctuated, token::Bracket, Expr, ExprCall,
+    Ident, LitInt, Token,
+};
 
 enum RangeOrArray {
-    ItemArray(Punctuated<Lit, Token![,]>),
+    ItemArray(Punctuated<LitInt, Token![,]>),
     Range(u8, u8),
 }
 
 struct Input {
     match_expr: Expr,
-    call_expr: syn::ExprCall,
+    call_expr: ExprCall,
+    format_prefix: Ident,
+    format_spec: usize,
     items: RangeOrArray,
 }
 
@@ -17,33 +22,40 @@ impl syn::parse::Parse for Input {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let match_expr = input.parse()?;
         let _separator = input.parse::<Token![=>]>()?;
+        let format_prefix = input.parse::<Ident>()?;
+
+        let braced_content;
+        braced!(braced_content in input);
+        braced_content.parse::<Token![:]>()?;
+
+        let format_spec = braced_content.parse::<LitInt>()?.base10_parse()?;
+        input.parse::<Token![::]>()?;
+
         let call_expr = input.parse()?;
         let _separator = input.parse::<Token![,]>()?;
 
         let la = input.lookahead1();
-        if la.peek(syn::Lit) {
+        let items = if la.peek(syn::Lit) {
             let start = input.parse::<syn::LitInt>()?;
             let _delim = input.parse::<Token![..]>()?;
             let end = input.parse::<syn::LitInt>()?;
-            Ok(Input {
-                match_expr,
-                call_expr,
-                items: RangeOrArray::Range(start.base10_parse()?, end.base10_parse()?),
-            })
+            RangeOrArray::Range(start.base10_parse()?, end.base10_parse()?)
         } else if la.peek(Bracket) {
-            // Explicit array
             let items;
             bracketed!(items in input);
-            let item_array = items.parse_terminated(Lit::parse, Token![,])?;
-
-            Ok(Input {
-                match_expr,
-                call_expr,
-                items: RangeOrArray::ItemArray(item_array),
-            })
+            let item_array = items.parse_terminated(LitInt::parse, Token![,])?;
+            RangeOrArray::ItemArray(item_array)
         } else {
-            Err(la.error())
-        }
+            return Err(la.error());
+        };
+
+        Ok(Input {
+            match_expr,
+            call_expr,
+            format_prefix,
+            format_spec,
+            items,
+        })
     }
 }
 
@@ -61,8 +73,10 @@ pub fn aoc(items: TokenStream) -> TokenStream {
                 [ #( #elems ),* ]
             };
 
+            let prefix = input.format_prefix;
+            let spec = input.format_spec;
             let expr = quote! {
-                #match_expr => #call, #expanded
+                #match_expr => #prefix{:#spec}::#call, #expanded
             };
 
             return aoc(expr.into());
@@ -70,16 +84,18 @@ pub fn aoc(items: TokenStream) -> TokenStream {
         RangeOrArray::ItemArray(item_array) => item_array
             .iter()
             .map(|elem| {
-                let (elem_str, ident) = match elem {
-                    Lit::Int(num) => (
-                        syn::LitInt::new(num.base10_digits(), num.span()),
-                        proc_macro2::Ident::new(
-                            &format!("day_{:02}", num.base10_parse::<usize>().unwrap()),
-                            num.span(),
+                let (elem_str, ident) = (
+                    syn::LitInt::new(elem.base10_digits(), elem.span()),
+                    proc_macro2::Ident::new(
+                        &format!(
+                            "{}{:0>width$}",
+                            input.format_prefix,
+                            elem.base10_parse::<usize>().unwrap(),
+                            width = input.format_spec
                         ),
+                        input.format_prefix.span(),
                     ),
-                    _ => unimplemented!(),
-                };
+                );
                 quote! {
                     #elem_str => #ident::#call
                 }
