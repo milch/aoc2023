@@ -1,3 +1,5 @@
+workspace = { members = ["aoc"] }
+
 [package]
 name = "advent-of-code-2023"
 version = "0.1.0"
@@ -10,6 +12,7 @@ cached = "0.46.1"
 clap = { version = "4.4.10", features = ["derive"] }
 indoc = "2.0.4"
 num = "0.4.1"
+aoc = { path = "aoc" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
