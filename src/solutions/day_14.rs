@@ -2,26 +2,29 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
-use crate::utils::math_2d::{Direction, Indexed2D, Point};
+use crate::utils::{
+    math_2d::{Direction, Point},
+    Indexed2D, ToMatrix,
+};
 
 const INPUT: &str = include_str!("day_14.txt");
 
 fn tilt(field: &mut [Vec<char>], direction: Direction) {
-    let by_rows = if direction.is_y() && direction.dy < 0 {
+    let by_rows = if direction == Direction::North {
         (0..field.len()).collect_vec()
     } else {
         (0..field.len()).rev().collect_vec()
     };
     for row_idx in by_rows {
-        let by_cols = if direction.is_x() && direction.dx < 0 {
+        let by_cols = if direction == Direction::West {
             (0..field[row_idx].len()).collect_vec()
         } else {
             (0..field[row_idx].len()).rev().collect_vec()
         };
         for col_idx in by_cols {
             let start_point = Point::new(col_idx, row_idx);
-            let mut current_pos = start_point + direction.opposite();
-            if let Some('.') = field.get_point(start_point) {
+            let current = start_point + direction.opposite();
+            if let (Some(mut current_pos), Some('.')) = (current, &field.get_point(start_point)) {
                 while let Some(val) = field.get_point(current_pos) {
                     match val {
                         '#' => break,
@@ -31,12 +34,11 @@ fn tilt(field: &mut [Vec<char>], direction: Direction) {
                         }
                         _ => (),
                     }
-                    if direction.is_y() && current_pos.y == 0
-                        || direction.is_x() && current_pos.x == 0
-                    {
+                    if let Some(new_pos) = current_pos + direction.opposite() {
+                        current_pos = new_pos
+                    } else {
                         break;
                     }
-                    current_pos += direction.opposite();
                 }
             }
         }
@@ -48,10 +50,10 @@ fn to_string(field: &[Vec<char>]) -> String {
 }
 
 fn spin_cycle(field: &mut [Vec<char>], seen: &mut HashSet<String>) -> bool {
-    tilt(field, Direction::north());
-    tilt(field, Direction::west());
-    tilt(field, Direction::south());
-    tilt(field, Direction::east());
+    tilt(field, Direction::North);
+    tilt(field, Direction::West);
+    tilt(field, Direction::South);
+    tilt(field, Direction::East);
 
     !seen.insert(to_string(field))
 }
@@ -73,7 +75,7 @@ fn spin_until(field: &mut [Vec<char>], times: usize) -> usize {
         }
 
         if start_idx.is_none() {
-            found_loads.push(calculate_load(&field));
+            found_loads.push(calculate_load(field));
         }
     }
 
@@ -85,10 +87,6 @@ fn spin_until(field: &mut [Vec<char>], times: usize) -> usize {
         .take((times - (start_idx.unwrap() + 1)) % cycle.len())
         .last()
         .unwrap()
-}
-
-fn parse_field(input: &str) -> Vec<Vec<char>> {
-    input.lines().map(|l| l.chars().collect_vec()).collect_vec()
 }
 
 fn calculate_load(field: &[Vec<char>]) -> usize {
@@ -103,14 +101,14 @@ fn calculate_load(field: &[Vec<char>]) -> usize {
 }
 
 pub fn print_solution() {
-    let mut field = parse_field(INPUT);
-    tilt(&mut field, Direction::north());
+    let mut field = INPUT.matrix();
+    tilt(&mut field, Direction::North);
     println!(
         "Total load on north support beams: {}",
         calculate_load(&field)
     );
 
-    let mut spin_field = parse_field(INPUT);
+    let mut spin_field = INPUT.matrix();
     let result = spin_until(&mut spin_field, 1000000000);
     println!(
         "Total load on north support beams after a billion spin cycles: {}",
@@ -178,31 +176,31 @@ mod test {
 
     #[test]
     fn test_tilt() {
-        let mut regular = parse_field(SAMPLE);
-        tilt(&mut regular, Direction::north());
-        assert_eq!(regular, parse_field(TILTED_SAMPLE))
+        let mut regular = SAMPLE.matrix();
+        tilt(&mut regular, Direction::North);
+        assert_eq!(regular, TILTED_SAMPLE.matrix())
     }
 
     #[test]
     fn test_calculate_load() {
-        let mut regular = parse_field(SAMPLE);
-        tilt(&mut regular, Direction::north());
+        let mut regular = SAMPLE.matrix();
+        tilt(&mut regular, Direction::North);
         assert_eq!(calculate_load(&regular), 136);
     }
 
     #[test]
     fn test_cycle() {
         let mut seen = HashSet::new();
-        let mut regular = parse_field(SAMPLE);
+        let mut regular = SAMPLE.matrix();
         spin_cycle(&mut regular, &mut seen);
-        assert_eq!(regular, parse_field(CYCLED_ONCE));
+        assert_eq!(regular, CYCLED_ONCE.matrix());
         spin_cycle(&mut regular, &mut seen);
-        assert_eq!(regular, parse_field(CYCLED_TWICE));
+        assert_eq!(regular, CYCLED_TWICE.matrix());
     }
 
     #[test]
     fn test_load_after_cycle() {
-        let mut field = parse_field(SAMPLE);
+        let mut field = SAMPLE.matrix();
         assert_eq!(spin_until(&mut field, 1000000000), 64);
     }
 }

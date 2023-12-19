@@ -1,64 +1,118 @@
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::{
+    fmt::{self, Display},
+    ops::{Add, AddAssign, Sub, SubAssign},
+};
 
-#[derive(Copy, Clone)]
-pub struct Direction {
-    pub(crate) dx: isize,
-    pub(crate) dy: isize,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
+pub struct Vector2D<T> {
+    pub(crate) x: T,
+    pub(crate) y: T,
+}
+
+impl<T> From<Vector2D<T>> for Direction
+where
+    T: Into<i8>,
+{
+    fn from(vector: Vector2D<T>) -> Self {
+        match (vector.x.into(), vector.y.into()) {
+            (1, 0) => Direction::East,
+            (-1, 0) => Direction::West,
+            (0, 1) => Direction::South,
+            (0, -1) => Direction::North,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<T> From<Direction> for Vector2D<T>
+where
+    T: num::Signed,
+{
+    fn from(val: Direction) -> Self {
+        match val {
+            Direction::East => Vector2D::new(T::one(), T::zero()),
+            Direction::West => Vector2D::new(-T::one(), T::zero()),
+            Direction::South => Vector2D::new(T::zero(), T::one()),
+            Direction::North => Vector2D::new(T::zero(), -T::one()),
+        }
+    }
 }
 
 impl Direction {
-    pub fn north() -> Self {
-        Self { dx: 0, dy: -1 }
-    }
-    pub fn south() -> Self {
-        Self { dx: 0, dy: 1 }
-    }
-    pub fn east() -> Self {
-        Self { dx: 1, dy: 0 }
-    }
-    pub fn west() -> Self {
-        Self { dx: -1, dy: 0 }
-    }
-
     pub fn opposite(&self) -> Self {
-        Self {
-            dx: -self.dx,
-            dy: -self.dy,
+        match self {
+            Direction::North => Direction::South,
+            Direction::South => Direction::North,
+            Direction::East => Direction::West,
+            Direction::West => Direction::East,
         }
     }
 
-    pub fn is_y(&self) -> bool {
-        self.dy != 0
-    }
-
-    pub fn is_x(&self) -> bool {
-        self.dx != 0
+    pub fn rotate(self, angle: f32) -> Self {
+        let rads = -angle.to_radians();
+        let vector: Vector2D<i8> = (self).into();
+        Vector2D {
+            x: (vector.x as f32 * rads.cos() - vector.y as f32 * rads.sin()) as i8,
+            y: (vector.x as f32 * rads.sin() + vector.y as f32 * rads.cos()) as i8,
+        }
+        .into()
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Point {
-    pub(crate) x: usize,
-    pub(crate) y: usize,
+impl Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Direction::North => f.write_str("north"),
+            Direction::South => f.write_str("south"),
+            Direction::East => f.write_str("east"),
+            Direction::West => f.write_str("west"),
+        }
+    }
 }
 
-impl Point {
-    pub fn new<N>(col_idx: N, row_idx: N) -> Point
+pub type Point = Vector2D<usize>;
+
+impl<T: num::Num> Vector2D<T> {
+    pub fn new<N>(col_idx: N, row_idx: N) -> Vector2D<T>
     where
-        N: Into<usize>,
+        N: Into<T>,
     {
-        Point {
+        Vector2D {
             x: col_idx.into(),
             y: row_idx.into(),
         }
     }
+
+    pub fn origin() -> Vector2D<T> {
+        Vector2D {
+            x: T::zero(),
+            y: T::zero(),
+        }
+    }
 }
 
-impl Add for Point {
-    type Output = Point;
+impl<T> Display for Vector2D<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("({}, {})", self.x, self.y))
+    }
+}
+
+impl<U, T: Add<Output = U>> Add for Vector2D<T> {
+    type Output = Vector2D<U>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Point {
+        Vector2D {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
         }
@@ -66,28 +120,29 @@ impl Add for Point {
 }
 
 impl Add<Direction> for Point {
-    type Output = Point;
+    type Output = Option<Point>;
 
     fn add(self, rhs: Direction) -> Self::Output {
-        Point {
-            x: self.x.checked_add_signed(rhs.dx).unwrap_or(0),
-            y: self.y.checked_add_signed(rhs.dy).unwrap_or(0),
-        }
+        let rhs_vector: Vector2D<i8> = rhs.into();
+        Some(Point {
+            x: self.x.checked_add_signed(rhs_vector.x as isize)?,
+            y: self.y.checked_add_signed(rhs_vector.y as isize)?,
+        })
     }
 }
 
-impl Sub for Point {
-    type Output = Point;
+impl<T: Sub<Output = U>, U> Sub for Vector2D<T> {
+    type Output = Vector2D<U>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Point {
+        Vector2D {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
         }
     }
 }
 
-impl AddAssign for Point {
+impl<T: AddAssign> AddAssign for Vector2D<T> {
     fn add_assign(&mut self, rhs: Self) {
         self.x += rhs.x;
         self.y += rhs.y;
@@ -96,45 +151,43 @@ impl AddAssign for Point {
 
 impl AddAssign<Direction> for Point {
     fn add_assign(&mut self, rhs: Direction) {
-        self.x = self.x.checked_add_signed(rhs.dx).unwrap_or(0);
-        self.y = self.y.checked_add_signed(rhs.dy).unwrap_or(0);
+        let rhs_vector: Vector2D<i8> = rhs.into();
+        self.x = self
+            .x
+            .checked_add_signed(rhs_vector.x as isize)
+            .unwrap_or(0);
+        self.y = self
+            .y
+            .checked_add_signed(rhs_vector.y as isize)
+            .unwrap_or(0);
     }
 }
 
-impl SubAssign for Point {
+impl<T: SubAssign> SubAssign for Vector2D<T>
+where
+    T: Copy,
+{
     fn sub_assign(&mut self, rhs: Self) {
         self.y -= rhs.y;
         self.y -= rhs.y;
     }
 }
 
-pub trait Indexed2D<T> {
-    fn get_point(&self, pt: Point) -> Option<&T>;
-    fn swap_points(&mut self, pt1: Point, pt2: Point);
-    fn get_point_mut(&mut self, pt: Point) -> Option<&mut T>;
-}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
 
-impl<T: std::default::Default> Indexed2D<T> for [Vec<T>] {
-    fn get_point(&self, pt: Point) -> Option<&T> {
-        let row = self.get(pt.y)?;
-        row.get(pt.x)
-    }
+    #[test]
+    fn test_rotate() {
+        assert_eq!(Direction::North.rotate(90.0), Direction::West);
+        assert_eq!(Direction::North.rotate(180.0), Direction::South);
+        assert_eq!(Direction::North.rotate(270.0), Direction::East);
+        assert_eq!(Direction::North.rotate(-90.0), Direction::East);
 
-    fn get_point_mut(&mut self, pt: Point) -> Option<&mut T> {
-        let row = self.get_mut(pt.y)?;
-        row.get_mut(pt.x)
-    }
-
-    fn swap_points(&mut self, pt1: Point, pt2: Point) {
-        if pt1.y == pt2.y {
-            // If the elements are in the same row, we can just swap them directly
-            self[pt1.y].swap(pt1.x, pt2.x);
-        } else {
-            // ... Otherwise take out the elements and place them back in reverse order
-            let item1 = std::mem::take(self.get_point_mut(pt1).unwrap());
-            let item2 = std::mem::take(self.get_point_mut(pt2).unwrap());
-            self[pt1.y][pt1.x] = item2;
-            self[pt2.y][pt2.x] = item1;
-        }
+        assert_eq!(Direction::West.rotate(90.0), Direction::South);
+        assert_eq!(Direction::West.rotate(180.0), Direction::East);
+        assert_eq!(Direction::West.rotate(270.0), Direction::North);
+        assert_eq!(Direction::West.rotate(-90.0), Direction::North);
     }
 }
