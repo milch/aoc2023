@@ -1,6 +1,6 @@
 use std::{
     fmt::{self, Display},
-    ops::{Add, AddAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Mul, Sub, SubAssign},
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -18,6 +18,18 @@ impl Direction {
         Direction::East,
         Direction::West,
     ];
+}
+
+impl From<&str> for Direction {
+    fn from(value: &str) -> Self {
+        match value {
+            "U" => Direction::North,
+            "D" => Direction::South,
+            "L" => Direction::West,
+            "R" => Direction::East,
+            _ => unimplemented!(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
@@ -204,6 +216,17 @@ where
     fn sub_assign(&mut self, rhs: Self) {
         self.y -= rhs.y;
         self.y -= rhs.y;
+    }
+}
+
+impl<T: Mul<Output = T> + Copy> Mul<T> for Vector2D<T> {
+    type Output = Self;
+
+    fn mul(self, rhs: T) -> Self::Output {
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
     }
 }
 
