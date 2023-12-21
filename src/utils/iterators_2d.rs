@@ -117,13 +117,23 @@ pub trait ToMatrix<T> {
     fn matrix(&self) -> Vec<Vec<T>>;
 }
 
+pub trait ToMatrixParse<T> {
+    fn matrix_parse(&self, parse: fn(char) -> T) -> Vec<Vec<T>>;
+}
+
 impl<T> ToMatrix<T> for &str
 where
     T: From<char>,
 {
     fn matrix(&self) -> Vec<Vec<T>> {
+        self.matrix_parse(T::from)
+    }
+}
+
+impl<T> ToMatrixParse<T> for &str {
+    fn matrix_parse(&self, parse: fn(char) -> T) -> Vec<Vec<T>> {
         self.lines()
-            .map(|l| l.chars().map(T::from).collect())
+            .map(|l| l.chars().map(parse).collect())
             .collect()
     }
 }

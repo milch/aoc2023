@@ -11,6 +11,15 @@ pub enum Direction {
     West,
 }
 
+impl Direction {
+    pub const ALL: [Direction; 4] = [
+        Direction::North,
+        Direction::South,
+        Direction::East,
+        Direction::West,
+    ];
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
 pub struct Vector2D<T> {
     pub(crate) x: T,
@@ -99,12 +108,37 @@ impl<T: num::Num> Vector2D<T> {
     }
 }
 
+pub trait OrdDistance<T> {
+    fn distance(&self, other: &Vector2D<T>) -> T;
+}
+
+impl<T: Copy + PartialOrd + num::Num> OrdDistance<T> for Vector2D<T> {
+    fn distance(&self, other: &Vector2D<T>) -> T {
+        let x_diff = if self.x > other.x {
+            self.x - other.x
+        } else {
+            other.x - self.x
+        };
+        let y_diff = match self.y > other.y {
+            true => self.y - other.y,
+            false => other.y - self.y,
+        };
+        x_diff + y_diff
+    }
+}
+
+impl<T: num::Signed> Vector2D<T> {
+    pub fn distance(&self, other: &Vector2D<T>) -> T {
+        self.x.abs_sub(&other.x) + self.y.abs_sub(&other.y)
+    }
+}
+
 impl<T> Display for Vector2D<T>
 where
     T: Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("({}, {})", self.x, self.y))
+        f.write_fmt(format_args!("({}, {})", self.y, self.x))
     }
 }
 
@@ -189,5 +223,11 @@ mod test {
         assert_eq!(Direction::West.rotate(180.0), Direction::East);
         assert_eq!(Direction::West.rotate(270.0), Direction::North);
         assert_eq!(Direction::West.rotate(-90.0), Direction::North);
+    }
+
+    #[test]
+    fn test_distance() {
+        assert_eq!(Point::new(0usize, 0).distance(&Point::new(1usize, 1)), 2);
+        assert_eq!(Point::new(10usize, 0).distance(&Point::new(0usize, 0)), 10);
     }
 }

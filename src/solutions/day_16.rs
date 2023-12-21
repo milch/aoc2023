@@ -1,75 +1,60 @@
 use crate::utils::{
     math_2d::{Direction, Point},
-    Indexed2D, ToMatrix,
+    *,
 };
 use std::collections::{HashSet, VecDeque};
 
 const INPUT: &str = include_str!("day_16.txt");
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-struct Trace {
-    current_point: Point,
-    direction: Direction,
-}
-
-impl Trace {
-    fn new(start: Point, direction: Direction) -> Self {
-        Self {
-            current_point: start,
-            direction,
-        }
-    }
-
-    fn extend(&self, direction: Direction) -> Option<Trace> {
-        let next = self.current_point + direction;
-        Some(Self {
-            current_point: next?,
-            direction,
-        })
-    }
-}
-
-fn raytrace(field: &[Vec<char>], start_trace: Trace) -> HashSet<Point> {
-    let mut queue: VecDeque<Trace> = VecDeque::from([start_trace]);
-    let mut passed_over: HashSet<Point> = HashSet::new();
+fn bfs(
+    start: Trace,
+    matrix: &[Vec<char>],
+    decide_turns: fn(&char, Direction) -> Vec<Direction>,
+) -> HashSet<Point> {
+    let mut queue: VecDeque<Trace> = VecDeque::from([start]);
+    let mut results: HashSet<Point> = HashSet::new();
     let mut seen: HashSet<Trace> = HashSet::new();
 
-    while let Some(current) = queue.pop_back() {
-        let direction = current.direction;
+    while let Some(current) = queue.pop_front() {
         if seen.contains(&current) {
             continue;
         }
-        let new_traces = match (field.get_point(current.current_point), direction) {
-            (Some('.'), _)
-            | (Some('|'), Direction::North)
-            | (Some('|'), Direction::South)
-            | (Some('-'), Direction::East)
-            | (Some('-'), Direction::West) => vec![current.extend(direction)],
-            (Some('|'), _) => vec![
-                current.extend(Direction::North),
-                current.extend(Direction::South),
-            ],
-            (Some('-'), _) => vec![
-                current.extend(Direction::East),
-                current.extend(Direction::West),
-            ],
-            (Some('\\'), Direction::East)
-            | (Some('\\'), Direction::West)
-            | (Some('/'), Direction::North)
-            | (Some('/'), Direction::South) => vec![current.extend(direction.rotate(-90.0))],
-            (Some('\\'), _) | (Some('/'), _) => vec![current.extend(direction.rotate(90.0))],
-            // Fell off the map
-            (None, _) => continue,
-            _ => unreachable!("Unhandled character?"),
+        let elem = matrix.get_point(current.get_point());
+        let direction = current.get_direction();
+        let new_directions = match elem {
+            Some(val) => decide_turns(val, direction),
+            None => continue,
         };
-        for trace in new_traces.into_iter().flatten() {
-            queue.push_back(trace)
+        for dir in new_directions {
+            if let Some(new_trace) = current.extend(dir) {
+                queue.push_back(new_trace);
+            }
         }
         seen.insert(current);
-        passed_over.insert(current.current_point);
+        results.insert(current.get_point());
     }
 
-    passed_over
+    results
+}
+
+fn raytrace(field: &[Vec<char>], start_trace: Trace) -> HashSet<Point> {
+    bfs(start_trace, field, |chr, dir| match (chr, dir) {
+        ('.', _)
+        | ('|', Direction::North)
+        | ('|', Direction::South)
+        | ('-', Direction::East)
+        | ('-', Direction::West) => vec![dir],
+        ('|', _) => vec![Direction::North, Direction::South],
+        ('-', _) => vec![Direction::East, Direction::West],
+        ('\\', Direction::East)
+        | ('\\', Direction::West)
+        | ('/', Direction::North)
+        | ('/', Direction::South) => vec![dir.rotate(-90.0)],
+        ('\\', _) | ('/', _) => vec![dir.rotate(90.0)],
+        _ => unreachable!("Unhandled character?"),
+    })
+    .into_iter()
+    .collect()
 }
 
 fn best_trace(field: &[Vec<char>]) -> usize {
