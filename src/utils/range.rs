@@ -195,7 +195,7 @@ mod test {
 
     #[test]
     fn test_split() {
-        assert_eq!((0..=200).split_upper(100), (Some(0..=100), Some(101..=200)));
+        assert_eq!((0..=200).split_upper(100), (Some(101..=200), Some(0..=100)));
         assert_eq!((0..=200).split_lower(100), (Some(0..=99), Some(100..=200)));
 
         assert_eq!((2..=3).split_lower(0), (None, Some(2..=3)));

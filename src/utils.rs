@@ -12,3 +12,6 @@ pub use list::*;
 
 pub mod range;
 pub use range::*;
+
+pub mod option;
+pub use option::*;
