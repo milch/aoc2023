@@ -9,3 +9,6 @@ pub use search::*;
 
 pub mod list;
 pub use list::*;
+
+pub mod range;
+pub use range::*;
