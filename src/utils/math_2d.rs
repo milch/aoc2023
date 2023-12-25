@@ -67,6 +67,15 @@ where
     }
 }
 
+impl From<Vector2D<usize>> for Vector2D<isize> {
+    fn from(value: Vector2D<usize>) -> Self {
+        Vector2D {
+            x: value.x as isize,
+            y: value.y as isize,
+        }
+    }
+}
+
 impl Direction {
     pub fn opposite(&self) -> Self {
         match self {
@@ -176,6 +185,24 @@ impl Add<Direction> for Point {
         })
     }
 }
+
+macro_rules! ImplAddForSignedType {
+    ( $($itype:ty),* ) => {
+        $(impl Add<Direction> for Vector2D<$itype> {
+            type Output = Vector2D<$itype>;
+
+            fn add(self, rhs: Direction) -> Self::Output {
+                let rhs_vector: Vector2D<$itype> = rhs.into();
+                Vector2D {
+                    x: self.x + rhs_vector.x,
+                    y: self.y + rhs_vector.y,
+                }
+            }
+        })*
+    };
+}
+
+ImplAddForSignedType!(isize, i64, i32, i16, i8);
 
 impl<T: Sub<Output = U>, U> Sub for Vector2D<T> {
     type Output = Vector2D<U>;

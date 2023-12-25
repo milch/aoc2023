@@ -15,3 +15,6 @@ pub use range::*;
 
 pub mod option;
 pub use option::*;
+
+pub mod math_3d;
+pub use math_3d::*;

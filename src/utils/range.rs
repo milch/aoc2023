@@ -1,4 +1,7 @@
-use std::ops::{Bound, Range, RangeBounds, RangeInclusive, RangeTo, RangeToInclusive, Sub};
+use std::{
+    fmt::Debug,
+    ops::{Bound, Range, RangeBounds, RangeInclusive, RangeTo, RangeToInclusive, Sub},
+};
 
 pub trait RangeIntersection<Idx: Copy + Ord, Rhs = Self> {
     type RangeType;

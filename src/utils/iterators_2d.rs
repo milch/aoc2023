@@ -1,15 +1,18 @@
-use super::Point;
+use super::{OptionFlatMap, Point, Vector2D};
 
 pub trait Indexed2D<'a, T> {
     type Iter;
 
     fn get_point(&'a self, pt: Point) -> Option<&'a T>;
-    fn swap_points(&'a mut self, pt1: Point, pt2: Point);
+    fn get_point_wrap(&'a self, pt: Vector2D<isize>) -> &'a T;
+    fn swap_points(&'a mut self, pt1: Point, pt2: Point)
+    where
+        T: Default;
     fn get_point_mut(&'a mut self, pt: Point) -> Option<&'a mut T>;
     fn iter_2d(&'a self) -> Self::Iter;
 }
 
-impl<'a, T: std::default::Default + 'a> Indexed2D<'a, T> for [Vec<T>] {
+impl<'a, T: 'a> Indexed2D<'a, T> for [Vec<T>] {
     type Iter = VecIter2D<'a, T>;
 
     fn get_point(&'a self, pt: Point) -> Option<&'a T> {
@@ -17,7 +20,10 @@ impl<'a, T: std::default::Default + 'a> Indexed2D<'a, T> for [Vec<T>] {
         row.get(pt.x)
     }
 
-    fn swap_points(&'a mut self, pt1: Point, pt2: Point) {
+    fn swap_points(&'a mut self, pt1: Point, pt2: Point)
+    where
+        T: Default,
+    {
         if pt1.y == pt2.y {
             // If the elements are in the same row, we can just swap them directly
             self[pt1.y].swap(pt1.x, pt2.x);
@@ -42,6 +48,24 @@ impl<'a, T: std::default::Default + 'a> Indexed2D<'a, T> for [Vec<T>] {
             row: 0,
             col: 0,
         }
+    }
+
+    fn get_point_wrap(&'a self, pt: Vector2D<isize>) -> &'a T {
+        let bounds = (self.len() as isize, self[0].len() as isize);
+        let x = if pt.x >= 0 {
+            pt.x % bounds.1
+        } else {
+            (bounds.1 - 1) - ((pt.x + 1) % bounds.1).abs()
+        };
+        let y = if pt.y >= 0 {
+            pt.y % bounds.0
+        } else {
+            (bounds.0 - 1) - ((pt.y + 1) % bounds.0).abs()
+        };
+
+        self.get(y as usize)
+            .flat_map(|row| row.get(x as usize))
+            .unwrap()
     }
 }
 
@@ -167,5 +191,35 @@ mod test {
         assert_eq!(matrix_it.next(), Some(Point::new(0usize, 2)));
         assert_eq!(matrix_it.next(), Some(Point::new(1usize, 2)));
         assert_eq!(matrix_it.next(), Some(Point::new(2usize, 2)));
+    }
+
+    #[test]
+    fn test_get_point_wrap() {
+        let matrix = vec![vec![1, 2], vec![4, 5], vec![7, 8]];
+
+        // Normal indices
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(0isize, 0)), &1);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(1isize, 0)), &2);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(0isize, 1)), &4);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(1isize, 1)), &5);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(0isize, 2)), &7);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(1isize, 2)), &8);
+
+        // Negative wraparound
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(-1isize, 0)), &2);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(-2isize, 0)), &1);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(-3isize, 0)), &2);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(-4isize, 0)), &1);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(-4isize, -1)), &7);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(-4isize, -2)), &4);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(-4isize, -3)), &1);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(-4isize, -4)), &7);
+
+        // Positive wraparound
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(2isize, 0)), &1);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(3isize, 0)), &2);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(2isize, 3)), &1);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(2isize, 4)), &4);
+        assert_eq!(matrix.get_point_wrap(Vector2D::new(2isize, 5)), &7);
     }
 }
