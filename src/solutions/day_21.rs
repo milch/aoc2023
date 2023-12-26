@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::utils::{Direction, Enumerable2D, Indexed2D, OptionFlatMap, ToMatrixParse, Vector2D};
-use std::{collections::HashSet, str::FromStr};
+use std::collections::HashSet;
 
 const INPUT: &str = include_str!("day_21.txt");
 
