@@ -37,15 +37,15 @@ where
         let mut parts = s.split(',');
         let x = parts
             .next()
-            .and_then(|x| x.parse().ok())
+            .and_then(|x| x.trim().parse().ok())
             .ok_or("Error parsing x value")?;
         let y = parts
             .next()
-            .and_then(|y| y.parse().ok())
+            .and_then(|y| y.trim().parse().ok())
             .ok_or("Error parsing y value")?;
         let z = parts
             .next()
-            .and_then(|z| z.parse().ok())
+            .and_then(|z| z.trim().parse().ok())
             .ok_or("Error parsing z value")?;
         Ok(Self::new(x, y, z))
     }
