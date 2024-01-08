@@ -85,9 +85,10 @@ fn check_intersections(hailstones: &[Hailstone], in_range: RangeInclusive<f64>) 
 fn find_rock_throw(hailstones: &[Hailstone]) -> f64 {
     let first = &hailstones[0];
     let second = &hailstones[1];
-    let search_range = -350..350;
+    let search_range = 0..350;
     let rock = (search_range.clone())
         .cartesian_product(search_range.clone())
+        .flat_map(|(vx, vy)| [(vx, vy), (-vx, vy), (vx, -vy), (-vx, -vy)])
         .filter(|(vx, vy)| {
             let first_mod = first.add_v_xy((-*vx, -*vy));
             hailstones[1..4]

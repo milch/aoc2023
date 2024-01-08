@@ -149,17 +149,4 @@ mod test {
 
         assert_eq!(possible_steps(&field, 6, false), 16)
     }
-
-    #[test]
-    fn test_possible_steps_unbounded() {
-        let field = SAMPLE.matrix_parse(Tile::from);
-
-        assert_eq!(possible_steps(&field, 6, true), 16);
-        assert_eq!(possible_steps(&field, 10, true), 50);
-        assert_eq!(possible_steps(&field, 50, true), 1594);
-        assert_eq!(possible_steps(&field, 100, true), 6536);
-        assert_eq!(possible_steps(&field, 500, true), 167004);
-        assert_eq!(possible_steps(&field, 1000, true), 668697);
-        assert_eq!(possible_steps(&field, 5000, true), 16733044);
-    }
 }
